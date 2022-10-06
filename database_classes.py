@@ -9,10 +9,12 @@ class Database:
         self.tables = {}
 
     def create_table(self, table_name, *values):
+
         table_path = self.db_path + '/' + table_name
         try:
             open(table_path, "x")
             self.tables[table_name] = table_path
+            # TODO: Implement values into table model
             success = "Table " + table_name + " created."
             print(success)
         except FileExistsError as _:
@@ -91,9 +93,9 @@ class DatabaseManager:
         return self.curr_db
 
 
-test = DatabaseManager()
-test.create_database("t1")
-test.set_curr_db("t1")
-test.curr_db.create_table("test.txt")
-test.curr_db.drop_table("test.txt")
-test.drop_database("t1")
+# test = DatabaseManager()
+# test.create_database("t1")
+# test.set_curr_db("t1")
+# test.curr_db.create_table("test.txt")
+# test.curr_db.drop_table("test.txt")
+# test.drop_database("t1")
