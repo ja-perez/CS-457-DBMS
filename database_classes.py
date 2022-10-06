@@ -54,6 +54,7 @@ class DatabaseManager:
     def __init__(self):
         self.curr_db = None
         self.databases = {}
+        self.is_case_sensitive = 1
 
     def create_database(self, db_name):
         try:
