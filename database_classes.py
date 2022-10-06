@@ -6,23 +6,29 @@ class Database:
     def __init__(self, db_name):
         self.db_name = db_name
         self.db_path = "./" + db_name
-        self.tables = set()
+        self.tables = {}
 
     def create_table(self, table_name, *values):
+        table_path = self.db_path + '/' + table_name
         try:
-            open(table_name, "x")
-            self.tables.add(table_name)
+            open(table_path, "x")
+            self.tables[table_name] = table_path
             success = "Table " + table_name + " created."
-            return success
+            print(success)
         except FileExistsError as _:
+            if table_name not in self.tables:
+                self.tables[table_name] = table_path
             error = "!Failed to create table " + table_name \
                     + " because it already exists."
-            return error
+            print(error)
 
     def drop_table(self, table_name):
-        if self.does_table_exist(table_name):
-            pass
-        else:
+        try:
+            os.remove(self.tables[table_name])
+            self.tables.pop(table_name)
+            success = "Table " + table_name + " deleted."
+            print(success)
+        except (KeyError, FileNotFoundError):
             error_msg = "!Failed to delete table " + table_name + " because it does not exist."
             print(error_msg)
 
@@ -32,11 +38,14 @@ class Database:
     def query_table(self):
         pass
 
-    def does_table_exist(self, table_name):
+    def does_table_exist(self, table_name: str) -> bool:
         return table_name in self.tables
 
-    def get_path(self):
+    def get_db_path(self) -> str:
         return self.db_path
+
+    def get_table_path(self, table_name: str) -> str:
+        return self.tables[table_name]
 
 
 class DatabaseManager:
@@ -71,8 +80,11 @@ class DatabaseManager:
             self.databases.pop(db_name)
             success = "Database " + db_name + " deleted."
             print(success)
-        except:
+        except (KeyError, FileNotFoundError):
             error_msg = "!Failed to delete database " + db_name + " because it does not exist."
+            print(error_msg)
+        except OSError:
+            error_msg = "!Failed to delete database " + db_name + " because it is not empty."
             print(error_msg)
 
     def get_curr_db(self):
@@ -82,4 +94,6 @@ class DatabaseManager:
 test = DatabaseManager()
 test.create_database("t1")
 test.set_curr_db("t1")
+test.curr_db.create_table("test.txt")
+test.curr_db.drop_table("test.txt")
 test.drop_database("t1")
