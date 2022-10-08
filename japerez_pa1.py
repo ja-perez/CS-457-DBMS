@@ -11,25 +11,30 @@ def is_input_valid(cmds: [str]) -> bool:
 def parse_cmd(usr_cmd: str, db_manager: db_c.DatabaseManager):
     usr_cmd = usr_cmd.split()
     cmd_function = usr_cmd[0]
-    cmd_storage = usr_cmd[1]
-    cmd_target = usr_cmd[2][:-1] if len(usr_cmd) == 3 else usr_cmd[1][:-1]
+    cmd_value = usr_cmd[1]
+    cmd_target = usr_cmd[-1][:-1] if len(usr_cmd) < 4 else usr_cmd[3:]
     match cmd_function:
         case "CREATE":
-            if cmd_storage == "DATABASE":
+            if cmd_value == "DATABASE":
                 db_manager.create_database(cmd_target)
-            elif cmd_storage == "TABLE":
-                # db_manager.curr_db.create_table(cmd_target)
-                pass
+            elif cmd_value == "TABLE":
+                table_name = usr_cmd[2]
+                remove_chars = ',();'
+                for i, param in enumerate(cmd_target):
+                    if 'varchar' in param or 'char' in param:
+                        cmd_target[i] = param.strip(',(;') if param.count(')') == 1 else param.strip(',(;')[:-1]
+                    else:
+                        cmd_target[i] = param.strip(remove_chars)
+                db_manager.curr_db.create_table(table_name, cmd_target)
         case "DROP":
-            if cmd_storage == "DATABASE":
+            if cmd_value == "DATABASE":
                 db_manager.drop_database(cmd_target)
-            elif cmd_storage == "TABLE":
+            elif cmd_value == "TABLE":
                 db_manager.curr_db.drop_table(cmd_target)
         case "SELECT":
             pass
         case "USE":
-            if cmd_storage == "DATABASE":
-                db_manager.set_curr_db(cmd_target)
+            db_manager.set_curr_db(cmd_target)
         case "CASE_SENSITIVE":
             db_manager.is_case_sensitive = int(cmd_target)
         case ".EXIT":
@@ -37,6 +42,11 @@ def parse_cmd(usr_cmd: str, db_manager: db_c.DatabaseManager):
 
 
 def prompt_user(dbms) -> str:
+    """
+    @param dbms:
+    @return: Returns the users input as a string if it is valid
+                Else returns the string 'error'
+    """
     usr_input = input('# ')
     usr_cmds = usr_input.split()
     if not dbms.is_case_sensitive:
