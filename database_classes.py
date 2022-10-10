@@ -29,7 +29,7 @@ class Table:
             if "(" in v_type:
                 v_type = v_type.split('(')[0] + '('
             if v_type not in self.attribute_types:
-                type_error = "!Failed to update table " + self.name + \
+                type_error = "!Failed to alter table " + self.name + \
                              " because of an error related to the attribute " + v_type + "."
                 print(type_error)
         temp = open('temp', 'w')
@@ -106,14 +106,18 @@ class Database:
             success = "Table " + table_name + " deleted."
             print(success)
         except (KeyError, FileNotFoundError):
-            error_msg = "!Failed to delete table " + table_name + " because it does not exist."
+            error_msg = "!Failed to delete " + table_name + " because it does not exist."
             print(error_msg)
 
     def update_table(self, table_name, *values):
         self.tables[table_name].add_values(values)
 
     def query_table(self, table_name, *values):
-        self.tables[table_name].select_values(values)
+        try:
+            self.tables[table_name].select_values(values)
+        except KeyError as _:
+            error_msg = "!Failed to query table " + table_name + " because it does not exist."
+            print(error_msg)
 
     def does_table_exist(self, table_name: str) -> bool:
         return table_name in self.tables
@@ -140,7 +144,7 @@ class DatabaseManager:
         except FileExistsError as _:
             if db_name not in self.databases:
                 self.databases[db_name] = Database(db_name)
-            error_msg = "!Failed to create database " + db_name + " because it already exist."
+            error_msg = "!Failed to create database " + db_name + " because it already exists."
             print(error_msg)
 
     def set_curr_db(self, dest_db: str):
@@ -159,10 +163,10 @@ class DatabaseManager:
             success = "Database " + db_name + " deleted."
             print(success)
         except (KeyError, FileNotFoundError):
-            error_msg = "!Failed to delete database " + db_name + " because it does not exist."
+            error_msg = "!Failed to delete " + db_name + " because it does not exist."
             print(error_msg)
         except OSError:
-            error_msg = "!Failed to delete database " + db_name + " because it is not empty."
+            error_msg = "!Failed to delete " + db_name + " because it is not empty."
             print(error_msg)
 
     def get_curr_db_name(self):
