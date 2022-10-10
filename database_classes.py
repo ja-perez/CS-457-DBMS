@@ -1,7 +1,32 @@
+"""
+Author: Javier Perez
+Date: 10/10/22
+Description:
+    This file defines the classes: Table, Database, Database Manager
+    The database manager in this case will be the only object that we explicitly
+    call in the main and serves as the users guide and access point into the
+     database management system(DBMS).
+"""
+
 import os
 import shutil
 
+
 class Table:
+    """
+        Class Name: Table
+        Constructor:
+            params: name (str), path(str)
+        Description:
+            - Defines and stores the methods/data necessary to create, delete, update, and
+            display tuples of information from a given database.
+            - Is called only by the Database class and each table object is associated with
+            a text file within the database class.
+            - The tables metadata and information is stored within this text file with the
+            attributes dictionary storing a high-level description for the metadata and the
+            information to be stored with each entry.
+    """
+
     def __init__(self, name, path):
         self.name = name
         self.path = path
@@ -82,6 +107,19 @@ class Table:
 
 
 class Database:
+    """
+        Class Name: Database
+        Constructor:
+            params: db_name (str)
+        Description:
+            - Defines and stores the methods/data necessary to create, delete, update, and
+            query a databases tables.
+            - Is called only by the Database Manager class and is associated with a directory
+            that is created within the working directory that the program was called from.
+            - Keeps a dictionary variables, Tables, with the keys being the Tables Name and
+            the value being the particular Table object instance associated with that name.
+    """
+
     def __init__(self, db_name):
         self.db_name = db_name
         self.db_path = "./" + db_name
@@ -130,6 +168,20 @@ class Database:
 
 
 class DatabaseManager:
+    """
+        Class Name: DatabaseManager
+        Constructor:
+            params: None
+        Description:
+            - Defines and stores the methods/data necessary to create and delete databases
+            within the working folder.
+            - Is called by the main program and uses the curr_db variable to handle updates
+            related to that specific database.
+            - Maintains a dictionary variable, databases, with the key value pair
+            { Database Name: Database Object }
+            - Also sets determines if the parser is case-sensitive using the variable
+            is_case_sensitive.
+    """
     def __init__(self):
         self.curr_db = None
         self.databases = {}
@@ -172,7 +224,7 @@ class DatabaseManager:
     def get_curr_db_name(self):
         return self.curr_db.db_name
 
-
+# Testing Classes and their methods
 # test = DatabaseManager()
 # test.create_database("t1")
 # test.set_curr_db("t1")

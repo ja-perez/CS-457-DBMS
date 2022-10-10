@@ -1,3 +1,22 @@
+"""
+Author: Javier Perez
+Date: 10/10/22
+Compilation: This program was written in pycharm using Python 3.10
+and may be run on any machine with this version of python installed using
+the command: python3 japerez_pa1.py
+    - Optionally, the program may also parse a file containing a list of commands using:
+    python3 japerez_pa1.py textfile_name
+Description:
+    - This file defines our database management systems(DMBS) main function,
+    and its associated helper functions, along with the users command line interface(CLI).
+    - The main creates and manages a DatabaseManager object from the database_classes file
+    and uses its method in order to create, update, delete, and query databases and their
+    respective tables.
+    - Databases are organized as directories, and their tables are created as tables within
+    their respective database directories. The Database Manager exists within the working
+    directory in which the program is called.
+"""
+
 import sys
 import database_classes as db_c
 
@@ -58,11 +77,6 @@ def parse_cmd(usr_cmd: str, db_manager: db_c.DatabaseManager):
 
 
 def prompt_user(dbms) -> str:
-    """
-    @param dbms: Passes a database manager system object
-    @return: Returns the users input as a string if it is valid
-                Else returns the string 'error'
-    """
     usr_input = input('# ')
     usr_cmds = usr_input.split()
     if not dbms.is_case_sensitive:
