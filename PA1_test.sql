@@ -1,3 +1,5 @@
+-- noinspection SqlNoDataSourceInspectionForFile
+
 --CS457 PA1
 
 CREATE DATABASE db_1;
