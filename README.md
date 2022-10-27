@@ -1,4 +1,4 @@
-# CS-457---DBMS-Metadata-Management
+# CS-457-DBMS
 # Javier Perez
 
 # Purpose

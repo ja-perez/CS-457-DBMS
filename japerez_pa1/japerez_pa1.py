@@ -2,7 +2,7 @@
 Author: Javier Perez
 Date: 10/10/22
 Compilation: This program was written in pycharm using Python 3.10
-and may be run on any machine with this version of python installed using
+and may be run on any linux machine with this version of python installed using
 the command: python3 japerez_pa1.py
     - Optionally, the program may also parse a file containing a list of commands using:
     python3 japerez_pa1.py textfile_name
