@@ -1,3 +1,5 @@
+-- noinspection SqlNoDataSourceInspectionForFile
+
 -- CS 457 PA2 test script
 
 CREATE DATABASE CS457_PA2;

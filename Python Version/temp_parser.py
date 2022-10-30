@@ -1,7 +1,6 @@
 import sys
-import numpy as np
-import database_classes as db_c
 from commands import parse_cmd, format_cmd
+
 
 class CLI:
     """
@@ -31,34 +30,28 @@ class CLI:
             Set:
                 - set var_name = value
     """
+
     def __init__(self):
         self.cmds = []
         self.valid_cmds = ("create", "drop", "use", "alter", "select",
                            "insert", "update", "delete", "where", "set",
                            "exit")
+        self.is_batch = False
 
     def prompt(self) -> [str]:
         cli_args = input("# ")
-        # while ";" not in cli_args:
-        #     print(cli_args)
-        #     if cli_args.lower() == ".exit":
-        #         self.cmds = cli_args.lower()
-        #         return self.cmds
-        #
-        #     cli_args += " " + input("  ")
-        # self.cmds = [arg.lower() for arg in cli_args.strip(";").split()]
-        # print(self.cmds)
         cmd_list = []
-        cli_args = [cli_args]
         while True:
+            if cli_args == ".exit":
+                cmd_list = cli_args
+                break
             if ';' in cli_args:
-                cmd_list.append(format_cmd(cli_args))
+                if cli_args.strip(';'):
+                    cmd_list.append(format_cmd(cli_args))
                 break
             else:
                 cmd_list.append(format_cmd(cli_args))
                 cli_args = input("  ")
-                print(cli_args)
-        print(cmd_list)
         self.cmds = cmd_list
         return self.cmds
 
@@ -66,6 +59,7 @@ class CLI:
         # Assume commands are syntactically correct, not grammatically
         # (i.e. starts with a valid command, ends with a semicolon | semicolon is command delimiter
         batch_cmds = {}
+        self.is_batch = True
         for file in file_names:
             with open(file, "r") as f:
                 cmds = f.readlines()
@@ -81,12 +75,17 @@ class CLI:
         self.cmds = batch_cmds
 
     def process_cmds(self):
-        for file in self.cmds:
-            for cmds in self.cmds[file]:
-                print("processing cmds:")
-                for cmd in cmds:
-                    print("\t", cmd)
-
+        if self.is_batch:
+            print("processing cmds:")
+            print("\tcmd_name args")
+            for file in self.cmds:
+                for cmds in self.cmds[file]:
+                    for cmd in cmds:
+                        parse_cmd(cmd)
+        else:
+            print("processing cmds:")
+            for cmd in self.cmds:
+                parse_cmd(cmd)
 
     def exit_cmd(self):
         if ".exit" in self.cmds:
@@ -110,6 +109,7 @@ def main():
             if dbms_cli.exit_cmd():
                 break
             else:
+                dbms_cli.process_cmds()
                 pass
 
 
