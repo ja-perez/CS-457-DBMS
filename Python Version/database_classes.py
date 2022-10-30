@@ -202,7 +202,7 @@ class DatabaseManager:
     def set_curr_db(self, dest_db: str):
         try:
             self.curr_db = self.databases[dest_db]
-            success = "Using database " + dest_db
+            success = "Using database " + dest_db + "."
             print(success)
         except KeyError as _:
             error_msg = "!Failed to use database " + dest_db + " because it does not exist."
