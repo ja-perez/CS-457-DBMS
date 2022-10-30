@@ -15,6 +15,7 @@ Description:
     - Databases are organized as directories, and their tables are created as tables within
     their respective database directories. The Database Manager exists within the working
     directory in which the program is called.
+    - Table entries are formatted as a string tuple in the associated table text file.
 """
 
 import sys
@@ -22,7 +23,7 @@ import database_classes as db_c
 
 
 def is_input_valid(cmds: [str]) -> bool:
-    valid_functions = ["CREATE", "DROP", "SELECT", "ALTER", "USE", ".EXIT", "CASE_SENSITIVE"]
+    valid_functions = ["CREATE", "DROP", "SELECT", "ALTER", "USE", ".EXIT", "CASE_SENSITIVE", "update", ]
     return (";" == cmds[-1][-1] or cmds[0] == ".EXIT") and cmds[0] in valid_functions
 
 
@@ -68,6 +69,9 @@ def parse_cmd(usr_cmd: str, db_manager: db_c.DatabaseManager):
             cmd_value = usr_cmd[4:]
             remove_trailing_chars(cmd_value)
             db_manager.curr_db.update_table(cmd_target, cmd_value)
+        case "update":
+            pass
+
         case "USE":
             db_manager.set_curr_db(cmd_target)
         case "CASE_SENSITIVE":
