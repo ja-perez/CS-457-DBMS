@@ -52,8 +52,10 @@ class CLI:
                     if cmds == ".exit":
                         print("All done.")
                         return
-                    for cmd in cmds:
-                        self.cmd_manager.parse_cmd(cmd)
+                    if len(cmds) == 1:
+                        self.cmd_manager.parse_cmd(cmds[0])
+                    else:
+                        self.cmd_manager.parse_cmd(cmds)
         else:
             for cmd in self.cmds:
                 self.cmd_manager.parse_cmd(cmd)
@@ -80,16 +82,16 @@ class CommandManager:
             Alter:
                 - alter table table_name (table_values*);
             Select:
-                - select options* from table_name (where | lambda);
+                - select variables* from table_name (where | lambda);
             Insert:
                 - insert into table_name values(options*);
             Update:
-                - update title_name (set | lambda) (where | lambda);
+                - update title_name set() where();
             Delete:
                 - delete from database_name (where);
         Other
             Where:
-                - where var_name (=, >, <, >=, <=, !=) value
+                - where var_name (= | > | < | >= | <= | !=) value
             Set:
                 - set var_name = value
     """
@@ -100,8 +102,14 @@ class CommandManager:
 
     # TODO: Refactor code to preserve variable/name format
     def parse_cmd(self, cmd: [str]):
-        cmd_name = cmd[0]
-        args = cmd[1:]
+        cmd_name, args = "", []
+        if type(cmd[0]) != str:
+            cmd_name = cmd[0][0]
+            cmd[0] = cmd[0][1:]
+            args = cmd
+        else:
+            cmd_name = cmd[0]
+            args = cmd[1:]
         if self.troubleshooting:
             print("\t", cmd_name, args)
         match cmd_name:
@@ -185,7 +193,7 @@ class CommandManager:
             print("\tAlter:", type_arg, name_arg, function_arg, values)
         match type_arg:
             case "table":
-                self.dbms.curr_db.update_table(name_arg, values)
+                self.dbms.curr_db.alter_table(name_arg, values)
             case _:
                 print("!Error: cannot alter ", type_arg, "'s")
 
@@ -210,14 +218,21 @@ class CommandManager:
         self.dbms.curr_db.insert_table(table_name, values)
 
     def update_cmd(self, args: [str]):
+        # format: update table_name set(var_name, new_value) where(var_name, var_value)
+        # args: [[table_name] [[set var_name new_value] [where var_name var_value]]
         if self.troubleshooting:
             print("\tUpdate:", args)
-        pass
+        table_name = args[0][0]
+        set_args = args[1][1:]
+        where_args = args[2][1:]
+        self.dbms.curr_db.update_table(table_name, set_args, where_args)
 
     def delete_cmd(self, args: [str]):
         if self.troubleshooting:
             print("\tDelete", args)
-        pass
+        table_name = args[0][1]
+        where_args = args[1][1:]
+        self.dbms.curr_db.delete_table_records(table_name, where_args)
 
     def where_cmd(self, args: [str]):
         if self.troubleshooting:

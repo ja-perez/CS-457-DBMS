@@ -17,7 +17,7 @@ select * from Product;
 update Product 
 set name = 'Gizmo' 
 where name = 'SuperGizmo';
-.exit
+
 update Product 
 set price = 14.99 
 where name = 'Gizmo';
@@ -31,7 +31,7 @@ delete from product
 where price > 150;
 
 select * from Product;
-
+.exit
 select name, price 
 from product 
 where pid != 2;

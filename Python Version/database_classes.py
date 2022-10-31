@@ -31,7 +31,8 @@ class Table:
         self.name = name
         self.path = path
         self.attribute_types = {"int": int, "float": float, "char(": str, "varchar(": str}
-        self.attributes = {}  # {Column: [Attribute Name(str), Attribute Type(str)
+        self.attributes = {}  # {Column: [Attribute Name(str), Attribute Type(str)]}
+        self.files_modified = 0
 
     def create_table(self):
         try:
@@ -120,6 +121,82 @@ class Table:
         file.close()
         print("1 new record inserted.")
 
+    def update_values(self, set_args, where_args):
+        file = open(self.path, "r")
+        rows = file.readlines()
+        file.close()
+        header = rows[0]
+        entries = rows[1:]
+        where_var, where_op, where_val, where_col = where_args[0], where_args[1], where_args[2], 0
+        set_var, set_val, set_col = set_args[0], set_args[2], 0
+        for col in self.attributes:
+            if self.attributes[col][0] == set_var:
+                set_col = col
+            if self.attributes[col][0] == where_var:
+                where_col = col
+        file = open(self.path, "w")
+        file.write(header)
+        modified_flag = 0
+        for entry in entries:
+            entry_data = entry.split()
+            if self.where_condition(entry_data[where_col], where_op, where_val, where_col):
+                entry_data[set_col] = set_val
+                modified_flag = 1
+            entry = ' '.join(entry_data)
+            file.write(entry + '\n')
+        if modified_flag:
+            self.files_modified += 1
+            if self.files_modified == 1:
+                print(self.files_modified, "record modified.")
+            else:
+                print(self.files_modified, "records modified.")
+        file.close()
+
+    def delete_values(self, where_args):
+        file = open(self.path, "r")
+        rows = file.readlines()
+        file.close()
+        header = rows[0]
+        entries = rows[1:]
+        where_var, where_op, where_val, where_col = where_args[0], where_args[1], where_args[2], 0
+        for col in self.attributes:
+            if self.attributes[col][0] == where_var:
+                where_col = col
+        file = open(self.path, "w")
+        file.write(header)
+        files_deleted = 0
+        for entry in entries:
+            entry_data = entry.split()
+            if self.where_condition(entry_data[where_col], where_op, where_val, where_col):
+                files_deleted += 1
+            else:
+                entry = ' '.join(entry_data)
+                file.write(entry + '\n')
+        if files_deleted == 1:
+            print(files_deleted, "record deleted.")
+        elif files_deleted > 0:
+            print(files_deleted, "records deleted.")
+        file.close()
+
+    def where_condition(self, table_val, conditional_op, where_val, attribute_col):
+        val_type = self.attributes[attribute_col][1]
+        if '(' in val_type:
+            val_type = val_type.split("(")[0] + "("
+        table_val, where_val = self.attribute_types[val_type](table_val), self.attribute_types[val_type](where_val)
+        match conditional_op:
+            case "=":
+                return table_val == where_val
+            case ">":
+                return table_val > where_val
+            case ">=":
+                return table_val >= where_val
+            case "<":
+                return table_val < where_val
+            case "<=":
+                return table_val <= where_val
+            case "!=":
+                return table_val != where_val
+
 class Database:
     """
         Class Name: Database
@@ -161,7 +238,7 @@ class Database:
             error_msg = "!Failed to delete " + table_name + " because it does not exist."
             print(error_msg)
 
-    def update_table(self, table_name, *values):
+    def alter_table(self, table_name, *values):
         self.tables[table_name].add_values(values)
 
     def query_table(self, table_name, *values):
@@ -171,8 +248,14 @@ class Database:
             error_msg = "!Failed to query table " + table_name + " because it does not exist."
             print(error_msg)
 
-    def insert_table(self, table_name, *values):
-        self.tables[table_name].insert_values(values[0])
+    def insert_table(self, table_name, values):
+        self.tables[table_name].insert_values(values)
+
+    def update_table(self, table_name, set_values, where_values):
+        self.tables[table_name].update_values(set_values, where_values)
+
+    def delete_table_records(self, table_name, where_values):
+        self.tables[table_name].delete_values(where_values)
 
     def does_table_exist(self, table_name: str) -> bool:
         return table_name in self.tables
