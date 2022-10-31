@@ -117,10 +117,11 @@ class Table:
             file = open(self.path, "r")
             rows = file.readlines()
             file.close()
-            header = rows[0].split()
-            print('|'.join([attr + ' ' + self.attributes[i][1] for i, attr in enumerate(header)]))
-            entries = rows[1:]
             output_cols = [col for col in self.attributes if self.attributes[col][0] in select_ids]
+            header = rows[0].split()
+            header = [var for i, var in enumerate(header) if i in output_cols]
+            print('|'.join([header[i] + ' ' + self.attributes[attr][1] for i, attr in enumerate(output_cols)]))
+            entries = rows[1:]
             for col in self.attributes:
                 if self.attributes[col][0] == where_var:
                     where_col = col
