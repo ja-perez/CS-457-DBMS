@@ -1,9 +1,6 @@
 class CLI:
     def __init__(self, dbms):
         self.cmds = []
-        self.valid_cmds = ("create", "drop", "use", "alter", "select",
-                           "insert", "update", "delete", "where", "set",
-                           "exit")
         self.is_batch = False
         self.cmd_manager = CommandManager(dbms)
 
@@ -99,6 +96,9 @@ class CommandManager:
     def __init__(self, dbms):
         self.dbms = dbms
         self.troubleshooting = False
+        self.valid_cmds = ("create", "drop", "use", "alter", "select",
+                           "insert", "update", "delete", "where", "set",
+                           "exit", "database", "table", "values", "from")
 
     # TODO: Refactor code to preserve variable/name format
     def parse_cmd(self, cmd: [str]):
@@ -152,7 +152,10 @@ class CommandManager:
                 stripped_cmd = cmd.strip(strip_chars1)
             else:
                 stripped_cmd = cmd.strip(strip_chars2)
-            lowered_cmds = stripped_cmd.lower()
+            if stripped_cmd.lower() in self.valid_cmds:
+                lowered_cmds = stripped_cmd.lower()
+            else:
+                lowered_cmds = stripped_cmd
             updated_cmds.append(lowered_cmds)
         return updated_cmds
 
@@ -167,6 +170,8 @@ class CommandManager:
                 self.dbms.create_database(name_arg)
             case "table":
                 self.dbms.curr_db.create_table(name_arg, values)
+            case _:
+                print(name_arg)
 
     def drop_cmd(self, args: [str]):
         type_arg = args[0]
