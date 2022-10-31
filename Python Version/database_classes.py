@@ -99,8 +99,8 @@ class Table:
         file.close()
         return True
 
-    def select_values(self, identifier):
-        if identifier[0] == "*":
+    def select_values(self, identifiers):
+        if identifiers[0] == "*":
             # Print all headers and associated values
             table_file = open(self.path, "r")
             table_rows = table_file.readlines()
@@ -111,7 +111,25 @@ class Table:
                 print('|'.join(entry.split()))
             table_file.close()
         else:
-            pass
+            select_ids, where_args = identifiers[0], identifiers[1]
+            where_var, where_op, where_val = where_args
+            where_col = 0
+            file = open(self.path, "r")
+            rows = file.readlines()
+            file.close()
+            header = rows[0].split()
+            print('|'.join([attr + ' ' + self.attributes[i][1] for i, attr in enumerate(header)]))
+            entries = rows[1:]
+            output_cols = [col for col in self.attributes if self.attributes[col][0] in select_ids]
+            for col in self.attributes:
+                if self.attributes[col][0] == where_var:
+                    where_col = col
+            for entry in entries:
+                entry_data = entry.split()
+                if self.where_condition(entry_data[where_col], where_op, where_val, where_col):
+                    output = '|'.join([entry_data[i] for i in output_cols])
+                    print(output)
+
 
     def insert_values(self, values):
         file = open(self.path, "a")

@@ -31,7 +31,7 @@ delete from product
 where price > 150;
 
 select * from Product;
-.exit
+
 select name, price 
 from product 
 where pid != 2;

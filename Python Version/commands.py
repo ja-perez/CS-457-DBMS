@@ -198,16 +198,23 @@ class CommandManager:
                 print("!Error: cannot alter ", type_arg, "'s")
 
     def select_cmd(self, args: [str]):
-        from_index = args.index("from")
-        values_arg = args[:from_index]
-        from_src = args[from_index + 1]
-        if self.troubleshooting:
-            print("\tSelect:", values_arg, from_src)
-        # TODO: update to work for select being its own command separate from 'from','where' commands
-        if values_arg[0] == "*":
-            self.dbms.curr_db.query_table(from_src, values_arg[0])
+        if type(args[0]) == str:
+            from_index = args.index("from")
+            values_arg = args[:from_index]
+            from_src = args[from_index + 1]
+            if self.troubleshooting:
+                print("\tSelect:", values_arg, from_src)
+            if values_arg[0] == "*":
+                self.dbms.curr_db.query_table(from_src, values_arg[0])
+            else:
+                self.dbms.curr_db.query_table(from_src, values_arg)
         else:
-            self.dbms.curr_db.query_table(from_src, values_arg)
+            if self.troubleshooting:
+                print("\tSelect:", args)
+            select_var = args[0]
+            table_name = args[1][1]
+            where_args = args[2][1:]
+            self.dbms.curr_db.query_table(table_name, select_var, where_args)
 
     def insert_cmd(self, args: [str]):
         table_name = args[0]
@@ -233,13 +240,3 @@ class CommandManager:
         table_name = args[0][1]
         where_args = args[1][1:]
         self.dbms.curr_db.delete_table_records(table_name, where_args)
-
-    def where_cmd(self, args: [str]):
-        if self.troubleshooting:
-            print("\tWhere:", args)
-        pass
-
-    def set_cmd(self, args: [str]):
-        if self.troubleshooting:
-            print("\tSet:", args)
-        pass
