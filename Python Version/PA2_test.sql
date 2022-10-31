@@ -17,7 +17,7 @@ select * from Product;
 update Product 
 set name = 'Gizmo' 
 where name = 'SuperGizmo';
-
+.exit
 update Product 
 set price = 14.99 
 where name = 'Gizmo';

@@ -1,3 +1,70 @@
+class CLI:
+    def __init__(self, dbms):
+        self.cmds = []
+        self.valid_cmds = ("create", "drop", "use", "alter", "select",
+                           "insert", "update", "delete", "where", "set",
+                           "exit")
+        self.is_batch = False
+        self.cmd_manager = CommandManager(dbms)
+
+    def prompt(self) -> [str]:
+        cli_args = input("# ")
+        cmd_list = []
+        while True:
+            if cli_args.lower() == ".exit":
+                cmd_list = cli_args.lower()
+                break
+            if ';' in cli_args:
+                if cli_args.strip(';'):
+                    cmd_list.append(self.cmd_manager.format_cmd(cli_args))
+                break
+            else:
+                cmd_list.append(self.cmd_manager.format_cmd(cli_args))
+                cli_args = input("  ")
+        self.cmds = cmd_list
+        return self.cmds
+
+    def batch_input(self, file_names):
+        # Assume commands are syntactically correct, not grammatically
+        # (i.e. starts with a valid command, ends with a semicolon s.t. semicolon is command delimiter
+        batch_cmds = {}
+        self.is_batch = True
+        for file in file_names:
+            with open(file, "r") as f:
+                cmds = f.readlines()
+                batch_cmds[file] = []
+                cmd_list = []
+                for cmd in cmds:
+                    if cmd.lower() == ".exit\n":
+                        batch_cmds[file].append(".exit")
+                    if ';' in cmd:
+                        cmd_list.append(self.cmd_manager.format_cmd(cmd))
+                        batch_cmds[file].append(cmd_list)
+                        cmd_list = []
+                    elif cmd[:2] != '--' and cmd != '\n':
+                        cmd_list.append(self.cmd_manager.format_cmd(cmd))
+        self.cmds = batch_cmds
+
+    def process_cmds(self):
+        if self.is_batch:
+            for file in self.cmds:
+                for cmds in self.cmds[file]:
+                    if cmds == ".exit":
+                        print("All done.")
+                        return
+                    for cmd in cmds:
+                        self.cmd_manager.parse_cmd(cmd)
+        else:
+            for cmd in self.cmds:
+                self.cmd_manager.parse_cmd(cmd)
+
+    def exit_cmd(self):
+        if ".exit" in self.cmds:
+            print("All done.")
+            return True
+        return False
+
+
 class CommandManager:
     """
     Command structures:
@@ -31,6 +98,7 @@ class CommandManager:
         self.dbms = dbms
         self.troubleshooting = False
 
+    # TODO: Refactor code to preserve variable/name format
     def parse_cmd(self, cmd: [str]):
         cmd_name = cmd[0]
         args = cmd[1:]
@@ -48,7 +116,9 @@ class CommandManager:
             case "select":
                 self.select_cmd(args)
             case "insert":
-                self.insert_cmd(args)
+                # insert cmd -> insert into table_name values(*);
+                # want to only pass key arguments (i.e. skip 'into')
+                self.insert_cmd(args[1:])
             case "update":
                 self.update_cmd(args)
             case "delete":
@@ -60,8 +130,8 @@ class CommandManager:
 
     def format_cmd(self, cmds):
         updated_cmds = []
-        strip_chars1 = '(\n;,'
-        strip_chars2 = '()\n;,'
+        strip_chars1 = '\'(\n;,'
+        strip_chars2 = '\'()\n;,'
         split_cmds = cmds.split()
         for i, cmd in enumerate(split_cmds):
             if 'values' in cmd:
@@ -132,9 +202,12 @@ class CommandManager:
             self.dbms.curr_db.query_table(from_src, values_arg)
 
     def insert_cmd(self, args: [str]):
+        table_name = args[0]
+        values_index = args.index('values')
+        values = args[values_index + 1:]
         if self.troubleshooting:
-            print("\tInsert:", args)
-        pass
+            print("\tInsert:", table_name, values)
+        self.dbms.curr_db.insert_table(table_name, values)
 
     def update_cmd(self, args: [str]):
         if self.troubleshooting:

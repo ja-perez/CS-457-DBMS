@@ -63,6 +63,8 @@ class Table:
                 if self.attributes[0][0] in row:
                     for i, v_name in enumerate(value_name):
                         row = row.strip('\n') + v_name + ' '
+                        if '(' in value_type[i]:
+                            value_type[i] += ')'
                         self.attributes[max(self.attributes) + i + 1] = (v_name, value_type[i])
                     row += '\n'
                 temp.write(row)
@@ -89,6 +91,8 @@ class Table:
         file = open(self.path, "a")
         for i, v_name in enumerate(value_name):
             file.write(v_name + ' ')
+            if '(' in value_type[i]:
+                value_type[i] += ')'
             self.attributes[i] = (v_name, value_type[i])
         file.write('\n')
         file.close()
@@ -97,14 +101,24 @@ class Table:
     def select_values(self, identifier):
         if identifier[0] == "*":
             # Print all headers and associated values
-            table_rows = open(self.path, "r")
-            for row in table_rows:
-                columns = row.split()
-                print(' | '.join([entry + ' ' + self.attributes[i][1] for i, entry in enumerate(columns)]))
-            table_rows.close()
+            table_file = open(self.path, "r")
+            table_rows = table_file.readlines()
+            header = table_rows[0].split()
+            table_entries = table_rows[1:]
+            print('|'.join([attr + ' ' + self.attributes[i][1] for i, attr in enumerate(header)]))
+            for entry in table_entries:
+                print('|'.join(entry.split()))
+            table_file.close()
         else:
             pass
 
+    def insert_values(self, values):
+        file = open(self.path, "a")
+        for value in values:
+            file.write(value + " ")
+        file.write("\n")
+        file.close()
+        print("1 new record inserted.")
 
 class Database:
     """
@@ -157,6 +171,9 @@ class Database:
             error_msg = "!Failed to query table " + table_name + " because it does not exist."
             print(error_msg)
 
+    def insert_table(self, table_name, *values):
+        self.tables[table_name].insert_values(values[0])
+
     def does_table_exist(self, table_name: str) -> bool:
         return table_name in self.tables
 
@@ -182,6 +199,7 @@ class DatabaseManager:
             - Also sets determines if the parser is case-sensitive using the variable
             is_case_sensitive.
     """
+
     def __init__(self):
         self.curr_db = None
         self.databases = {}
