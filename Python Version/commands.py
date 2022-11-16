@@ -25,6 +25,7 @@ class CLI:
             - The command manager object cmd_manager is called to execute a processed commands
             contents and contains various helper functions for formatting commands.
     """
+
     def __init__(self, dbms):
         self.cmds = []
         self.is_batch = False
