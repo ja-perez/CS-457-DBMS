@@ -1,6 +1,6 @@
 """
 Author: Javier Perez
-Date: 11/X/22
+Date: 11/21/22
 Compilation: This program was written in pycharm using Python 3.10
 and was tested on machines with Win 10, 11 and Ubuntu 22.04.1 LTS.
 The program can be run using the command:
@@ -34,7 +34,6 @@ def main():
         # test files passed - Batch Mode
         dbms_cli.batch_input(test_files)
         dbms_cli.process_cmds()
-        pass
     else:
         while True:
             dbms_cli.prompt()

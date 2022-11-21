@@ -1,6 +1,6 @@
 """
 Author: Javier Perez
-Date: 10/31/22
+Date: 11/21/22
 Description:
     This file defines the classes: CLI, CommandManager
     The CLI in this case will be the only object that we explicitly call in the
@@ -11,6 +11,10 @@ Description:
 """
 
 
+# TODO: Make parser not case-sensitive for table names
+# TODO: Update format method to accept Table_Name(values*) (only set for Table_Name (values*))
+# Idea: Split on ( -> Join -> Split on spaces -> join -> Split on ',' -> Strip ");'"
+# TODO: Update FOR parameter to include join functionality
 class CLI:
     """
         Class Name: CLI
@@ -104,33 +108,49 @@ class CommandManager:
             methods available.
             - The valid_cmds dictionary contains the commands we want to consider as
             not being case-sensitive.
+            - Command arguments must be formatted in respective Command Method
         * Below is a visual guide that I used to implement the parsing algorithm for each
         command based on that database functions definition.
     """
 
     """
     Command structures:
-        Database & Table
-            Create:
-                - create database database_name;
-                - create table table_name values(options*);
-            Drop:
-                - drop (database | table) title;
-            Use:
-                - use title;
-        Table
-            Alter:
-                - alter table table_name (table_values*);
-            Select:
-                - select variables* from table_name (where | lambda);
-            Insert:
-                - insert into table_name values(options*);
-            Update:
-                - update title_name set() where();
-            Delete:
-                - delete from database_name (where);
-        Other
-            Where:
+        > Primary_CMD CMD_PARAMETERS
+        # Main Commands:
+            Create, Drop, Use, Select, Alter, Insert, Update, Delete, Exit
+            
+        Primary Commands
+            Database & Table
+                Create: (type, title, values*) -> Create Dir/File
+                    - create database title;
+                    - create table title (options*);
+                    - create table title(options*);
+                Drop: (type, title) -> Delete Dir/File
+                    - drop (database | table) title;
+
+            Database
+                Use: (title) -> update dbms current db to title
+                    - use title;
+            Table
+                Alter:
+                    - alter table table_name (table_values*);
+                Select: (outputs, tables, conditions) -> formatted outputs
+                    - select variables* from table_name (where | lambda); 
+                Insert:
+                    - insert into table_name values(options*);
+                Update:
+                    - update title_name set() where();
+                Delete:
+                    - delete from database_name (where);
+            Other
+                Exit:
+                    - .exit
+           
+        Primary Command Parameters
+            From: (tables, table operations) -> formatted table
+                - from table_name (where | lambda);
+                - from table_name X (inner | [(left | right | full) outer] | lambda) join table_name Y (on | lambda);
+            Where/On:
                 - where var_name (= | > | < | >= | <= | !=) value
             Set:
                 - set var_name = value
@@ -216,8 +236,12 @@ class CommandManager:
                 print(name_arg)
 
     def drop_cmd(self, args: [str]):
-        type_arg = args[0]
-        name_arg = args[1]
+        try:
+            type_arg = args[0]
+            name_arg = args[1]
+        except IndexError as err:
+            print("!Error: Missing Database/Table specifier or Title")
+            return
         if self.troubleshooting:
             print("\tDrop:", type_arg, name_arg)
         match type_arg:
@@ -245,6 +269,7 @@ class CommandManager:
                 print("!Error: cannot alter ", type_arg, "'s")
 
     def select_cmd(self, args: [str]):
+        print(args)
         if type(args[0]) == str:
             from_index = args.index("from")
             values_arg = args[:from_index]
@@ -262,6 +287,10 @@ class CommandManager:
             table_name = args[1][1]
             where_args = args[2][1:]
             self.dbms.curr_db.query_table(table_name, select_var, where_args)
+
+    # TODO: Separate "from" in select cmd into its own method
+    def from_cmd(self, args: [str]):
+        pass
 
     def insert_cmd(self, args: [str]):
         table_name = args[0]

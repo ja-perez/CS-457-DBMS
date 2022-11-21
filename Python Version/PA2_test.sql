@@ -14,7 +14,7 @@ insert into Product values(5,	'SuperGizmo', 	49.99);
 
 select * from Product;
 
-update Product 
+update Product
 set name = 'Gizmo' 
 where name = 'SuperGizmo';
 
