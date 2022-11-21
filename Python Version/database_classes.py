@@ -100,19 +100,19 @@ class Table:
         file.close()
         return True
 
-    def select_values(self, identifiers):
-        if identifiers[0] == "*":
+    def select_values(self, select_values, conditions):
+        if select_values[0] == "*":
             # Print all headers and associated values
             table_file = open(self.path, "r")
             table_rows = table_file.readlines()
             header = table_rows[0].split()
             table_entries = table_rows[1:]
-            print('|'.join([attr + ' ' + self.attributes[i][1] for i, attr in enumerate(header)]))
+            print(' | '.join([attr + ' ' + self.attributes[i][1] for i, attr in enumerate(header)]))
             for entry in table_entries:
-                print('|'.join(entry.split()))
+                print(' | '.join(entry.split()))
             table_file.close()
         else:
-            select_ids, where_args = identifiers[0], identifiers[1]
+            select_ids, where_args = select_values[0], conditions[1]
             where_var, where_op, where_val = where_args
             where_col = 0
             file = open(self.path, "r")
@@ -266,9 +266,9 @@ class Database:
     def alter_table(self, table_name, *values):
         self.tables[table_name].add_values(values)
 
-    def query_table(self, table_name, *values):
+    def query_table(self, table_name, select_values, conditions):
         try:
-            self.tables[table_name].select_values(values)
+            self.tables[table_name].select_values(select_values, conditions)
         except KeyError as _:
             error_msg = "!Failed to query table " + table_name + " because it does not exist."
             print(error_msg)

@@ -45,7 +45,7 @@ class CLI:
                 curr_cmd = []
                 for line in f_lines:
                     line = line.strip('\n')
-                    if is_command(line) and (';' in line or '.exit' in line):
+                    if is_command(line) and (';' in line or '.exit' in line or '.EXIT' in line):
                         curr_cmd.append(line)
                         file_cmds.append(' '.join(curr_cmd))
                         curr_cmd = []
@@ -69,7 +69,7 @@ class CLI:
 def format_values(values):
     for i, value in enumerate(values):
         if "))" in value or 'varchar' in value:
-            value = value.replace("))", ")")
+            value = value.replace("))", "")
             value = value.strip('(,')
         else:
             value = value.strip('(,)')
@@ -101,6 +101,8 @@ class CommandManager:
         """
         commands = command.strip(';').split()
         primary_cmd, args = commands[0].lower(), commands[1:]
+        if primary_cmd.lower() == '.exit':
+            primary_cmd = '.exit'
         if self.TS:
             print("processing:", command)
             print("primary command:", primary_cmd)
@@ -178,7 +180,10 @@ class CommandManager:
         select_vals = args[:from_index]
         from_vals = args[from_index + 1:condition_index]
         condition_vals = args[condition_index + 1:]
-        print(select_vals, from_vals, condition_vals)
+        if len(from_vals) == 1:
+            self.dbms.curr_db.query_table(from_vals[0].lower(), select_vals, condition_vals)
+        else:
+            pass
 
     def alter_cmd(self, args):
         alter_src = args[0].lower()
