@@ -183,6 +183,8 @@ class CommandManager:
         condition_vals = args[condition_index + 1:]
         if len(from_vals) == 1:
             self.dbms.curr_db.query_table(from_vals[0].lower(), select_vals, condition_vals)
+        else:
+            self.dbms.curr_db.query_table(from_vals, select_vals, condition_vals)
 
     def alter_cmd(self, args):
         alter_src = args[0].lower()

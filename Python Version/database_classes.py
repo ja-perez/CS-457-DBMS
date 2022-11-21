@@ -100,8 +100,16 @@ class Table:
         file.close()
         return True
 
-    def select_values(self, select_values, conditions):
-        if select_values[0] == "*":
+    def get_values(self):
+        values = []
+        with open(self.path, "r") as f:
+            f_lines = f.readlines()
+            for line in f_lines:
+                values.append(line.strip('\n '))
+        return values
+
+    def select_values(self, select_values, conditions, table_join=[], join_attributes={}):
+        if select_values[0] == "*" and not conditions:
             # Print all headers and associated values
             table_file = open(self.path, "r")
             table_rows = table_file.readlines()
@@ -112,12 +120,20 @@ class Table:
                 print('|'.join(entry.split()))
             table_file.close()
         else:
+            if join_attributes:
+                self.attributes = join_attributes
             select_ids, where_args = select_values, conditions
             where_var, where_op, where_val = where_args
             where_col = 0
-            file = open(self.path, "r")
-            rows = file.readlines()
-            file.close()
+            where_var = where_var.split('.')[1]
+            where_val = where_val.split('.')[1]
+            print(select_ids, where_var, where_op, where_val)
+            if table_join:
+                rows = table_join
+            else:
+                file = open(self.path, "r")
+                rows = file.readlines()
+                file.close()
             output_cols = [col for col in self.attributes if self.attributes[col][0] in select_ids]
             header = rows[0].split()
             header = [var for i, var in enumerate(header) if i in output_cols]
@@ -266,9 +282,38 @@ class Database:
     def alter_table(self, table_name, *values):
         self.tables[table_name].add_values(values)
 
+    def join_tables(self, table_1, table_2):
+        try:
+            data_1 = self.tables[table_1.lower()].get_values()
+            data_2 = self.tables[table_2.lower()].get_values()
+            data_1_header, data_1 = data_1[0], data_1[1:]
+            data_2_header, data_2 = data_2[0], data_2[1:]
+            new_table = [data_1_header + data_2_header]
+            new_attributes = self.tables[table_1.lower()].attributes
+            for attributes2 in self.tables[table_2.lower()].attributes:
+                new_attributes[attributes2] = self.tables[table_2.lower()].attributes[attributes2]
+            print(new_attributes)
+            for d1 in data_1:
+                for d2 in data_2:
+                    new_table.append(d1 + d2)
+            return new_table
+        except KeyError as _:
+            error_msg = "!Failed to join table " + table_1 + " and " + table_2 + " because one of them does not exist."
+            print(error_msg)
+
     def query_table(self, table_name, select_values, conditions):
         try:
-            self.tables[table_name].select_values(select_values, conditions)
+            if type(table_name) == list:
+                table_1 = table_name[0].lower()
+                if 'join' in table_name:
+                    join_index = table_name.index('join')
+                    table_2 = table_name[join_index + 1].lower()
+                else:
+                    table_2 = table_name[2].lower()
+                table_join = self.join_tables(table_1, table_2)
+                self.tables[table_1].select_values(select_values, conditions, table_join)
+            else:
+                self.tables[table_name].select_values(select_values, conditions)
         except KeyError as _:
             error_msg = "!Failed to query table " + table_name + " because it does not exist."
             print(error_msg)
