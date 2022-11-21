@@ -78,7 +78,7 @@ def format_values(values):
 
 def format_args(args):
     for i, arg in enumerate(args):
-        args[i] = arg.strip("\'")
+        args[i] = arg.strip(",\'")
 
 
 class CommandManager:
@@ -178,12 +178,11 @@ class CommandManager:
         else:
             condition_index = len(args)
         select_vals = args[:from_index]
+        format_args(select_vals)
         from_vals = args[from_index + 1:condition_index]
         condition_vals = args[condition_index + 1:]
         if len(from_vals) == 1:
             self.dbms.curr_db.query_table(from_vals[0].lower(), select_vals, condition_vals)
-        else:
-            pass
 
     def alter_cmd(self, args):
         alter_src = args[0].lower()

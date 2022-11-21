@@ -93,7 +93,7 @@ class Table:
         file = open(self.path, "a")
         for i, v_name in enumerate(value_name):
             file.write(v_name + ' ')
-            if '(' in value_type[i]:
+            if '(' in value_type[i] and ')' not in value_type[i]:
                 value_type[i] += ')'
             self.attributes[i] = (v_name, value_type[i])
         file.write('\n')
@@ -107,12 +107,12 @@ class Table:
             table_rows = table_file.readlines()
             header = table_rows[0].split()
             table_entries = table_rows[1:]
-            print(' | '.join([attr + ' ' + self.attributes[i][1] for i, attr in enumerate(header)]))
+            print('|'.join([attr + ' ' + self.attributes[i][1] for i, attr in enumerate(header)]))
             for entry in table_entries:
-                print(' | '.join(entry.split()))
+                print('|'.join(entry.split()))
             table_file.close()
         else:
-            select_ids, where_args = select_values[0], conditions[1]
+            select_ids, where_args = select_values, conditions
             where_var, where_op, where_val = where_args
             where_col = 0
             file = open(self.path, "r")
