@@ -22,26 +22,22 @@ Description:
 
 import sys
 import database_classes as db_c
-from commands import CLI
+from refactored_commands import CLI
 
 
 def main():
     program_args = sys.argv
+    test_files = program_args[1:]
     dbms = db_c.DatabaseManager()
     dbms_cli = CLI(dbms)
-    test_files = program_args[1:]
     if test_files:
         # test files passed - Batch Mode
-        dbms_cli.batch_input(test_files)
-        dbms_cli.process_cmds()
-    else:
-        while True:
-            dbms_cli.prompt()
-            if dbms_cli.exit_cmd():
-                break
-            else:
-                dbms_cli.process_cmds()
-                pass
+        dbms_cli.batch_mode(test_files)
+        return
+    while True:
+        dbms_cli.prompt()
+        if dbms_cli.is_exit():
+            break
 
 
 if __name__ == "__main__":

@@ -304,7 +304,7 @@ class DatabaseManager:
             related to that specific database.
             - Maintains a dictionary variable, databases, with the key value pair
             { Database Name: Database Object }
-            - Commands are not case-sensitive, however database names, table names,
+            - Commands are not case-sensitive, however database names,
             and variables are.
     """
 

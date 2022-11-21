@@ -11,10 +11,6 @@ Description:
 """
 
 
-# TODO: Make parser not case-sensitive for table names
-# TODO: Update format method to accept Table_Name(values*) (only set for Table_Name (values*))
-# Idea: Split on ( -> Join -> Split on spaces -> join -> Split on ',' -> Strip ");'"
-# TODO: Update FOR parameter to include join functionality
 class CLI:
     """
         Class Name: CLI
@@ -50,9 +46,8 @@ class CLI:
                 cmd_list.append(self.cmd_manager.format_cmd(cli_args))
                 cli_args = input("  ")
         self.cmds = cmd_list
-        return self.cmds
 
-    def batch_input(self, file_names):
+    def batch_mode(self, file_names):
         # Assume commands are syntactically correct, not grammatically
         # (i.e. starts with a valid command, ends with a semicolon s.t. semicolon is command delimiter
         batch_cmds = {}
@@ -72,6 +67,7 @@ class CLI:
                     elif cmd[:2] != '--' and cmd != '\n':
                         cmd_list.append(self.cmd_manager.format_cmd(cmd))
         self.cmds = batch_cmds
+        self.process_cmds()
 
     def process_cmds(self):
         if self.is_batch:
