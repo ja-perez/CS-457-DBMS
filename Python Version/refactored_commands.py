@@ -13,8 +13,6 @@ Description:
 
 # TODO:
 #   Update description ^^^ with refactored changes
-#   Update format method to accept Table_Name(values*) (only set for Table_Name (values*))
-#       Idea: Split on ( -> Join -> Split on spaces -> join -> Split on ',' -> Strip ");'"
 #   Update FOR parameter to include join functionality
 
 def is_command(line):
@@ -78,10 +76,15 @@ def format_values(values):
         values[i] = value
 
 
+def format_args(args):
+    for i, arg in enumerate(args):
+        args[i] = arg.strip("\'")
+
+
 class CommandManager:
     def __init__(self, dbms):
         self.primary_cmds = ("create", "drop", "use", "select", "alter",
-                             "insert", "update", "delete", "exit")
+                             "insert", "update", "delete", "exit", "from")
         self.dbms = dbms
         self.exit_flag = 0
         self.TS = 0
@@ -96,9 +99,8 @@ class CommandManager:
             Assumption: command is just a string containing one complete command
             Complete meaning it starts with a primary cmd and ends with ';'
         """
-        command = command.lower()
         commands = command.strip(';').split()
-        primary_cmd, args = commands[0], commands[1:]
+        primary_cmd, args = commands[0].lower(), commands[1:]
         if self.TS:
             print("processing:", command)
             print("primary command:", primary_cmd)
@@ -138,37 +140,80 @@ class CommandManager:
                 self.dbms.create_database(create_name)
             case "table":
                 format_check = create_name.split('(')
-                create_name = format_check[0]
+                create_name = format_check[0].lower()
                 values = args[2:]
                 if len(format_check) > 1:
                     values = ['(' + format_check[1]] + values
                 format_values(values)
-                print(values, create_name)
                 self.dbms.curr_db.create_table(create_name, values)
             case _:
                 print("!Error: Must specify either table or database creation.")
 
     def drop_cmd(self, args):
-        pass
+        try:
+            drop_type = args[0].lower()
+            drop_name = args[1]
+        except IndexError as _:
+            print("!Error: Missing Database/Table specifier or Title")
+            return
+        match drop_type:
+            case "database":
+                self.dbms.drop_database(drop_name)
+            case "table":
+                self.dbms.curr_db.drop_table(drop_name.lower())
 
     def use_cmd(self, args):
         db_name = args[0]
         self.dbms.set_curr_db(db_name)
 
     def select_cmd(self, args):
-        pass
+        args = [arg.lower() if arg.lower() in self.primary_cmds else arg for arg in args]
+        from_index = args.index('from')
+        if 'on' in args:
+            condition_index = args.index('on')
+        elif 'where' in args:
+            condition_index = args.index('where')
+        else:
+            condition_index = len(args)
+        select_vals = args[:from_index]
+        from_vals = args[from_index + 1:condition_index]
+        condition_vals = args[condition_index + 1:]
+        print(select_vals, from_vals, condition_vals)
 
     def alter_cmd(self, args):
-        pass
+        alter_src = args[0].lower()
+        alter_name = args[1].lower()
+        alter_values = args[3:]
+        match alter_src:
+            case "table":
+                self.dbms.curr_db.alter_table(alter_name, alter_values)
+            case _:
+                print("!Error: Cannot alter", alter_src + "'s")
 
     def insert_cmd(self, args):
-        pass
+        table_name, values = args[1].lower(), args[2:]
+        if len(values) > 1:
+            for i, value in enumerate(values):
+                values[i] = value.replace("values(", '').strip(',\')')
+        else:
+            values = values[0].split(',')
+            for i, value in enumerate(values):
+                values[i] = value.replace("values(", '').strip(')\'')
+        self.dbms.curr_db.insert_table(table_name, values)
 
     def update_cmd(self, args):
-        pass
+        table_name = args[0].lower()
+        set_args = args[2:5]
+        format_args(set_args)
+        where_args = args[6:]
+        format_args(where_args)
+        self.dbms.curr_db.update_table(table_name, set_args, where_args)
 
     def delete_cmd(self, args):
-        pass
+        table_name = args[1].lower()
+        where_args = args[3:]
+        format_args(where_args)
+        self.dbms.curr_db.delete_table_records(table_name, where_args)
 
     def exit_cmd(self):
         print("All done.")
