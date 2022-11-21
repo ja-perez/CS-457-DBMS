@@ -13,7 +13,6 @@ Description:
 
 # TODO:
 #   Update description ^^^ with refactored changes
-#   Make parser not case-sensitive for table names
 #   Update format method to accept Table_Name(values*) (only set for Table_Name (values*))
 #       Idea: Split on ( -> Join -> Split on spaces -> join -> Split on ',' -> Strip ");'"
 #   Update FOR parameter to include join functionality
@@ -69,6 +68,16 @@ class CLI:
         return self.cmd_manager.exit_flag
 
 
+def format_values(values):
+    for i, value in enumerate(values):
+        if "))" in value or 'varchar' in value:
+            value = value.replace("))", ")")
+            value = value.strip('(,')
+        else:
+            value = value.strip('(,)')
+        values[i] = value
+
+
 class CommandManager:
     def __init__(self, dbms):
         self.primary_cmds = ("create", "drop", "use", "select", "alter",
@@ -77,9 +86,19 @@ class CommandManager:
         self.exit_flag = 0
         self.TS = 0
 
+    def troubleshoot(self, *args):
+        if self.TS:
+            for arg in args:
+                print(arg)
+
     def process_cmd(self, command):
-        commands = command.split()
-        primary_cmd, args = commands[0].lower(), commands[1:]
+        """
+            Assumption: command is just a string containing one complete command
+            Complete meaning it starts with a primary cmd and ends with ';'
+        """
+        command = command.lower()
+        commands = command.strip(';').split()
+        primary_cmd, args = commands[0], commands[1:]
         if self.TS:
             print("processing:", command)
             print("primary command:", primary_cmd)
@@ -89,7 +108,7 @@ class CommandManager:
             case "drop":
                 self.drop_cmd(args)
             case "use":
-                self.use_cmd(args[0])
+                self.use_cmd(args)
             case "select":
                 self.select_cmd(args)
             case "alter":
@@ -106,13 +125,35 @@ class CommandManager:
                 print("!Error: Command not recognized")
 
     def create_cmd(self, args):
-        pass
+        self.troubleshoot(args)
+        create_type, create_name = "", ""
+        try:
+            create_type, create_name = args[0].lower(), args[1]
+        except IndexError as _:
+            print("!Error: Missing creation type and/or creation name")
+            return
+
+        match create_type:
+            case "database":
+                self.dbms.create_database(create_name)
+            case "table":
+                format_check = create_name.split('(')
+                create_name = format_check[0]
+                values = args[2:]
+                if len(format_check) > 1:
+                    values = ['(' + format_check[1]] + values
+                format_values(values)
+                print(values, create_name)
+                self.dbms.curr_db.create_table(create_name, values)
+            case _:
+                print("!Error: Must specify either table or database creation.")
 
     def drop_cmd(self, args):
         pass
 
     def use_cmd(self, args):
-        pass
+        db_name = args[0]
+        self.dbms.set_curr_db(db_name)
 
     def select_cmd(self, args):
         pass

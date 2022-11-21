@@ -18,7 +18,7 @@ insert into Sales values(2,544);
 select * 
 from Employee E, Sales S 
 where E.id = S.employeeID;
-.exit
+
 -- This is the same as above but with a different syntax (3 points)
 select * 
 from Employee E inner join Sales S 
