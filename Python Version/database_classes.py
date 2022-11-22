@@ -1,6 +1,6 @@
 """
 Author: Javier Perez
-Date: 10/31/22
+Date: 11/21/22
 Description:
     This file defines the classes: Table, Database, Database Manager
     The database manager in this case will be the only object that we explicitly
@@ -28,8 +28,6 @@ class Table:
             in each entry.
     """
 
-    # FIXME: PLEASE... TAKE AWAY ALL THE FORMATTING THAT GOES ON IN HERE
-    #   REMOVE ALL THE BLOATED LOGIC, I BEG OF YOU
     def __init__(self, name, path):
         self.name = name
         self.path = path
@@ -124,22 +122,35 @@ class Table:
             for row in rows[1:]:
                 print('|'.join(row))
         elif is_join:
-            joined_table, joined_attributes = is_join[0], is_join[1]
+            joined_table, joined_attributes, join_type = is_join[0], is_join[1], is_join[2]
             attributes = [joined_attributes[attr] for attr in joined_attributes]
             header = []
             for var in attributes:
                 header.append(' '.join(var))
-
+            print('|'.join(header))
             left_condition, operation, right_condition = condition
             left_condition = left_condition.split('.')[1]
             right_condition = right_condition.split('.')[1]
             left_col = [col for col in joined_attributes if joined_attributes[col][0] == left_condition][0]
             right_col = [col for col in joined_attributes if joined_attributes[col][0] == right_condition][0]
-            print(output_vals, left_condition, right_condition)
-            for entry in joined_table:
-                print(entry)
-            print()
-            output_cols = [i for i in range(len(header))]
+            output_cols = [i for i, _ in enumerate(header)] if '*' in output_vals[0] \
+                else [i for i, val in enumerate(header) if val in output_vals]
+            outputs = []
+            for i, entry in enumerate(joined_table[1:]):
+                entry = entry.split()
+                if self.on_condition(entry[left_col], operation, entry[right_col], left_col, joined_attributes):
+                    output = [val for i, val in enumerate(entry) if i in output_cols]
+                    outputs.append('|'.join(output))
+            for output in outputs:
+                print(output)
+            if join_type == "outer":
+                unique_left = [(val.split()[0], val.split()[1]) for val in joined_table[1:]]
+                unique_left = set(unique_left)
+                unique_left = ['|'.join(val) + '||' for val in unique_left]
+                outputs = ''.join(outputs)
+                for ul in unique_left:
+                    if ul[:-2] not in outputs:
+                        print(ul)
         else:
             print('|'.join(header))
             left_cond, operation, right_cond = condition
@@ -213,6 +224,25 @@ class Table:
         elif files_deleted > 0:
             print(files_deleted, "records deleted.")
         file.close()
+
+    def on_condition(self, left_val, conditional_op, right_val, attribute_col, attributes):
+        val_type = attributes[attribute_col][1]
+        if '(' in val_type:
+            val_type = val_type.split("(")[0] + "("
+        table_val, where_val = self.attribute_types[val_type](left_val), self.attribute_types[val_type](right_val)
+        match conditional_op:
+            case "=":
+                return table_val == where_val
+            case ">":
+                return table_val > where_val
+            case ">=":
+                return table_val >= where_val
+            case "<":
+                return table_val < where_val
+            case "<=":
+                return table_val <= where_val
+            case "!=":
+                return table_val != where_val
 
     def where_condition(self, table_val, conditional_op, where_val, attribute_col):
         """
@@ -309,13 +339,14 @@ class Database:
         try:
             if type(table_name) == list:
                 table_1 = table_name[0].lower()
+                join_type = 'outer' if 'outer' in table_name else 'inner'
                 if 'join' in table_name:
                     join_index = table_name.index('join')
                     table_2 = table_name[join_index + 1].lower()
                 else:
                     table_2 = table_name[2].lower()
                 table_join, attr_join = self.join_tables(table_1, table_2)
-                self.tables[table_1].select_values(select_values, conditions, table_join, attr_join)
+                self.tables[table_1].select_values(select_values, conditions, table_join, attr_join, join_type)
             else:
                 self.tables[table_name].select_values(select_values, conditions)
         except KeyError as _:

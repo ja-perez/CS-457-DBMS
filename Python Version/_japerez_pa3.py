@@ -22,7 +22,7 @@ Description:
 
 import sys
 import database_classes as db_c
-from refactored_commands import CLI
+from commands import CLI
 
 
 def main():

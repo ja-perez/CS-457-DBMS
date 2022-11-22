@@ -11,304 +11,212 @@ Description:
 """
 
 
-class CLI:
-    """
-        Class Name: CLI
-        Constructor:
-            params: dbms (DatabaseManager - Object defined in database_classes.py)
-        Description:
-            - Defines and stores the methods/data necessary to prompt the user for input,
-            process that input to test for its syntactical properties, and communicate that
-            input to the database manager dbms.
-            - Is called in the main function and can process user input from the command line, but
-            also process a file filled with commands.
-            - The command manager object cmd_manager is called to execute a processed commands
-            contents and contains various helper functions for formatting commands.
-    """
+def is_command(line):
+    return line and line[:2] != "--"
 
+
+class CLI:
     def __init__(self, dbms):
-        self.cmds = []
-        self.is_batch = False
+        self.cmds = ""
         self.cmd_manager = CommandManager(dbms)
 
-    def prompt(self) -> [str]:
+    def prompt(self):
         cli_args = input("# ")
-        cmd_list = []
+        curr_cmd = []
         while True:
-            if cli_args.lower() == ".exit":
-                cmd_list = cli_args.lower()
+            if ';' in cli_args or '.exit' in cli_args:
+                curr_cmd.append(cli_args)
                 break
-            if ';' in cli_args:
-                if cli_args.strip(';'):
-                    cmd_list.append(self.cmd_manager.format_cmd(cli_args))
-                break
-            else:
-                cmd_list.append(self.cmd_manager.format_cmd(cli_args))
-                cli_args = input("  ")
-        self.cmds = cmd_list
+            curr_cmd.append(cli_args)
+            cli_args = input("  ")
+        self.cmds = ' '.join(curr_cmd)
+        self.parse_cmds()
 
-    def batch_mode(self, file_names):
-        # Assume commands are syntactically correct, not grammatically
-        # (i.e. starts with a valid command, ends with a semicolon s.t. semicolon is command delimiter
-        batch_cmds = {}
-        self.is_batch = True
-        for file in file_names:
+    def batch_mode(self, batch_files):
+        files_to_cmds = {}
+        for file in batch_files:
+            file_cmds = []
             with open(file, "r") as f:
-                cmds = f.readlines()
-                batch_cmds[file] = []
-                cmd_list = []
-                for cmd in cmds:
-                    if cmd.lower() == ".exit\n":
-                        batch_cmds[file].append(".exit")
-                    if ';' in cmd:
-                        cmd_list.append(self.cmd_manager.format_cmd(cmd))
-                        batch_cmds[file].append(cmd_list)
-                        cmd_list = []
-                    elif cmd[:2] != '--' and cmd != '\n':
-                        cmd_list.append(self.cmd_manager.format_cmd(cmd))
-        self.cmds = batch_cmds
-        self.process_cmds()
+                f_lines = f.readlines()
+                curr_cmd = []
+                for line in f_lines:
+                    line = line.strip('\n')
+                    if is_command(line) and (';' in line or '.exit' in line or '.EXIT' in line):
+                        curr_cmd.append(line)
+                        file_cmds.append(' '.join(curr_cmd))
+                        curr_cmd = []
+                    elif is_command(line):
+                        curr_cmd.append(line)
+            files_to_cmds[file] = file_cmds
+        self.parse_cmds(files_to_cmds)
 
-    def process_cmds(self):
-        if self.is_batch:
-            for file in self.cmds:
-                for cmds in self.cmds[file]:
-                    if cmds == ".exit":
-                        print("All done.")
-                        return
-                    if len(cmds) == 1:
-                        self.cmd_manager.parse_cmd(cmds[0])
-                    else:
-                        self.cmd_manager.parse_cmd(cmds)
+    def parse_cmds(self, batch_files=None):
+        if batch_files:
+            for file in batch_files:
+                for cmd in batch_files[file]:
+                    self.cmd_manager.process_cmd(cmd)
         else:
-            for cmd in self.cmds:
-                self.cmd_manager.parse_cmd(cmd)
+            self.cmd_manager.process_cmd(self.cmds)
 
-    def exit_cmd(self):
-        if ".exit" in self.cmds:
-            print("All done.")
-            return True
-        return False
+    def is_exit(self):
+        return self.cmd_manager.exit_flag
+
+
+def format_values(values):
+    for i, value in enumerate(values):
+        if "))" in value or 'varchar' in value:
+            value = value.replace("))", "")
+            value = value.strip('(,')
+        else:
+            value = value.strip('(,)')
+        values[i] = value
+
+
+def format_args(args):
+    for i, arg in enumerate(args):
+        args[i] = arg.strip(",\'")
 
 
 class CommandManager:
-    """
-        Class Name: CommandManager
-        Constructor:
-            params: dbms (DatabaseManager - Object defined in database_classes.py)
-        Description:
-            - Defines and stores the methods/data necessary to execute commands processed
-            by the CLI by passing the appropriate arguments to their respective methods
-            according to its definition in the database_classes.py file.
-            - Is called only by the CLI class and each command has various troubleshooting
-            methods available.
-            - The valid_cmds dictionary contains the commands we want to consider as
-            not being case-sensitive.
-            - Command arguments must be formatted in respective Command Method
-        * Below is a visual guide that I used to implement the parsing algorithm for each
-        command based on that database functions definition.
-    """
-
-    """
-    Command structures:
-        > Primary_CMD CMD_PARAMETERS
-        # Main Commands:
-            Create, Drop, Use, Select, Alter, Insert, Update, Delete, Exit
-            
-        Primary Commands
-            Database & Table
-                Create: (type, title, values*) -> Create Dir/File
-                    - create database title;
-                    - create table title (options*);
-                    - create table title(options*);
-                Drop: (type, title) -> Delete Dir/File
-                    - drop (database | table) title;
-
-            Database
-                Use: (title) -> update dbms current db to title
-                    - use title;
-            Table
-                Alter:
-                    - alter table table_name (table_values*);
-                Select: (outputs, tables, conditions) -> formatted outputs
-                    - select variables* from table_name (where | lambda); 
-                Insert:
-                    - insert into table_name values(options*);
-                Update:
-                    - update title_name set() where();
-                Delete:
-                    - delete from database_name (where);
-            Other
-                Exit:
-                    - .exit
-           
-        Primary Command Parameters
-            From: (tables, table operations) -> formatted table
-                - from table_name (where | lambda);
-                - from table_name X (inner | [(left | right | full) outer] | lambda) join table_name Y (on | lambda);
-            Where/On:
-                - where var_name (= | > | < | >= | <= | !=) value
-            Set:
-                - set var_name = value
-    """
-
     def __init__(self, dbms):
+        self.primary_cmds = ("create", "drop", "use", "select", "alter",
+                             "insert", "update", "delete", "exit", "from")
         self.dbms = dbms
-        self.troubleshooting = False
-        self.valid_cmds = ("create", "drop", "use", "alter", "select",
-                           "insert", "update", "delete", "where", "set",
-                           "exit", "database", "table", "values", "from")
+        self.exit_flag = 0
+        self.TS = 0
 
-    def parse_cmd(self, cmd: [str]):
-        cmd_name, args = "", []
-        if type(cmd[0]) != str:
-            cmd_name = cmd[0][0]
-            cmd[0] = cmd[0][1:]
-            args = cmd
-        else:
-            cmd_name = cmd[0]
-            args = cmd[1:]
-        if self.troubleshooting:
-            print("\t", cmd_name, args)
-        match cmd_name:
+    def troubleshoot(self, *args):
+        if self.TS:
+            for arg in args:
+                print(arg)
+
+    def process_cmd(self, command):
+        """
+            Assumption: command is just a string containing one complete command
+            Complete meaning it starts with a primary cmd and ends with ';'
+        """
+        commands = command.strip(';').split()
+        primary_cmd, args = commands[0].lower(), commands[1:]
+        if primary_cmd.lower() == '.exit':
+            primary_cmd = '.exit'
+        if self.TS:
+            print("processing:", command)
+            print("primary command:", primary_cmd)
+        match primary_cmd:
             case "create":
                 self.create_cmd(args)
             case "drop":
                 self.drop_cmd(args)
             case "use":
-                self.use_cmd(args[0])
-            case "alter":
-                self.alter_cmd(args)
+                self.use_cmd(args)
             case "select":
                 self.select_cmd(args)
+            case "alter":
+                self.alter_cmd(args)
             case "insert":
-                # insert cmd -> insert into table_name values(*);
-                # want to only pass key arguments (i.e. skip 'into')
-                self.insert_cmd(args[1:])
+                self.insert_cmd(args)
             case "update":
                 self.update_cmd(args)
             case "delete":
                 self.delete_cmd(args)
+            case ".exit":
+                self.exit_cmd()
             case _:
                 print("!Error: Command not recognized")
-        if self.troubleshooting:
-            print()
 
-    def format_cmd(self, cmds):
-        updated_cmds = []
-        strip_chars1 = '\'(\n;,'
-        strip_chars2 = '\'()\n;,'
-        split_cmds = cmds.split()
-        for i, cmd in enumerate(split_cmds):
-            if 'values' in cmd:
-                args = cmd.split("(")
-                split_cmds[i] = args[0]
-                split_cmds.insert(i + 1, args[1])
-        for cmd in split_cmds:
-            if "(" in cmd and "))" in cmd:
-                cmd = cmd.replace("))", ")")
-                stripped_cmd = cmd.strip(strip_chars1)
-            else:
-                stripped_cmd = cmd.strip(strip_chars2)
-            if stripped_cmd.lower() in self.valid_cmds:
-                lowered_cmds = stripped_cmd.lower()
-            else:
-                lowered_cmds = stripped_cmd
-            updated_cmds.append(lowered_cmds)
-        return updated_cmds
-
-    def create_cmd(self, args: [str]):
-        type_arg = args[0]
-        name_arg = args[1]
-        values = args[2:]
-        if self.troubleshooting:
-            print("\tCreate:", type_arg, name_arg, values)
-        match type_arg:
-            case "database":
-                self.dbms.create_database(name_arg)
-            case "table":
-                self.dbms.curr_db.create_table(name_arg, values)
-            case _:
-                print(name_arg)
-
-    def drop_cmd(self, args: [str]):
+    def create_cmd(self, args):
+        self.troubleshoot(args)
+        create_type, create_name = "", ""
         try:
-            type_arg = args[0]
-            name_arg = args[1]
-        except IndexError as err:
+            create_type, create_name = args[0].lower(), args[1]
+        except IndexError as _:
+            print("!Error: Missing creation type and/or creation name")
+            return
+
+        match create_type:
+            case "database":
+                self.dbms.create_database(create_name)
+            case "table":
+                format_check = create_name.split('(')
+                create_name = format_check[0].lower()
+                values = args[2:]
+                if len(format_check) > 1:
+                    values = ['(' + format_check[1]] + values
+                format_values(values)
+                self.dbms.curr_db.create_table(create_name, values)
+            case _:
+                print("!Error: Must specify either table or database creation.")
+
+    def drop_cmd(self, args):
+        try:
+            drop_type = args[0].lower()
+            drop_name = args[1]
+        except IndexError as _:
             print("!Error: Missing Database/Table specifier or Title")
             return
-        if self.troubleshooting:
-            print("\tDrop:", type_arg, name_arg)
-        match type_arg:
+        match drop_type:
             case "database":
-                self.dbms.drop_database(name_arg)
+                self.dbms.drop_database(drop_name)
             case "table":
-                self.dbms.curr_db.drop_table(name_arg)
+                self.dbms.curr_db.drop_table(drop_name.lower())
 
-    def use_cmd(self, arg: str):
-        if self.troubleshooting:
-            print("\tUse:", arg)
-        self.dbms.set_curr_db(arg)
+    def use_cmd(self, args):
+        db_name = args[0]
+        self.dbms.set_curr_db(db_name)
 
-    def alter_cmd(self, args: [str]):
-        type_arg = args[0]
-        name_arg = args[1]
-        function_arg = args[2]
-        values = args[3:]
-        if self.troubleshooting:
-            print("\tAlter:", type_arg, name_arg, function_arg, values)
-        match type_arg:
-            case "table":
-                self.dbms.curr_db.alter_table(name_arg, values)
-            case _:
-                print("!Error: cannot alter ", type_arg, "'s")
-
-    def select_cmd(self, args: [str]):
-        print(args)
-        if type(args[0]) == str:
-            from_index = args.index("from")
-            values_arg = args[:from_index]
-            from_src = args[from_index + 1]
-            if self.troubleshooting:
-                print("\tSelect:", values_arg, from_src)
-            if values_arg[0] == "*":
-                self.dbms.curr_db.query_table(from_src, values_arg[0])
-            else:
-                self.dbms.curr_db.query_table(from_src, values_arg)
+    def select_cmd(self, args):
+        args = [arg.lower() if arg.lower() in self.primary_cmds else arg for arg in args]
+        from_index = args.index('from')
+        if 'on' in args:
+            condition_index = args.index('on')
+        elif 'where' in args:
+            condition_index = args.index('where')
         else:
-            if self.troubleshooting:
-                print("\tSelect:", args)
-            select_var = args[0]
-            table_name = args[1][1]
-            where_args = args[2][1:]
-            self.dbms.curr_db.query_table(table_name, select_var, where_args)
+            condition_index = len(args)
+        select_vals = args[:from_index]
+        format_args(select_vals)
+        from_vals = args[from_index + 1:condition_index]
+        condition_vals = args[condition_index + 1:]
+        if len(from_vals) == 1:
+            self.dbms.curr_db.query_table(from_vals[0].lower(), select_vals, condition_vals)
+        else:
+            self.dbms.curr_db.query_table(from_vals, select_vals, condition_vals)
 
-    # TODO: Separate "from" in select cmd into its own method
-    def from_cmd(self, args: [str]):
-        pass
+    def alter_cmd(self, args):
+        alter_type = args[0].lower()
+        alter_name = args[1].lower()
+        alter_values = args[3:]
+        match alter_type:
+            case "table":
+                self.dbms.curr_db.alter_table(alter_name, alter_values)
+            case _:
+                print("!Error: Cannot alter", alter_type + "'s")
 
-    def insert_cmd(self, args: [str]):
-        table_name = args[0]
-        values_index = args.index('values')
-        values = args[values_index + 1:]
-        if self.troubleshooting:
-            print("\tInsert:", table_name, values)
+    def insert_cmd(self, args):
+        table_name, values = args[1].lower(), args[2:]
+        if len(values) > 1:
+            for i, value in enumerate(values):
+                values[i] = value.replace("values(", '').strip(',\')')
+        else:
+            values = values[0].split(',')
+            for i, value in enumerate(values):
+                values[i] = value.replace("values(", '').strip(')\'')
         self.dbms.curr_db.insert_table(table_name, values)
 
-    def update_cmd(self, args: [str]):
-        # format: update table_name set(var_name, new_value) where(var_name, var_value)
-        # args: [[table_name] [[set var_name new_value] [where var_name var_value]]
-        if self.troubleshooting:
-            print("\tUpdate:", args)
-        table_name = args[0][0]
-        set_args = args[1][1:]
-        where_args = args[2][1:]
+    def update_cmd(self, args):
+        table_name = args[0].lower()
+        set_args = args[2:5]
+        format_args(set_args)
+        where_args = args[6:]
+        format_args(where_args)
         self.dbms.curr_db.update_table(table_name, set_args, where_args)
 
-    def delete_cmd(self, args: [str]):
-        if self.troubleshooting:
-            print("\tDelete", args)
-        table_name = args[0][1]
-        where_args = args[1][1:]
+    def delete_cmd(self, args):
+        table_name = args[1].lower()
+        where_args = args[3:]
+        format_args(where_args)
         self.dbms.curr_db.delete_table_records(table_name, where_args)
+
+    def exit_cmd(self):
+        print("All done.")
+        self.exit_flag = 1
