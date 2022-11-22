@@ -187,14 +187,14 @@ class CommandManager:
             self.dbms.curr_db.query_table(from_vals, select_vals, condition_vals)
 
     def alter_cmd(self, args):
-        alter_src = args[0].lower()
+        alter_type = args[0].lower()
         alter_name = args[1].lower()
         alter_values = args[3:]
-        match alter_src:
+        match alter_type:
             case "table":
                 self.dbms.curr_db.alter_table(alter_name, alter_values)
             case _:
-                print("!Error: Cannot alter", alter_src + "'s")
+                print("!Error: Cannot alter", alter_type + "'s")
 
     def insert_cmd(self, args):
         table_name, values = args[1].lower(), args[2:]

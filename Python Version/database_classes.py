@@ -28,11 +28,14 @@ class Table:
             in each entry.
     """
 
+    # FIXME: PLEASE... TAKE AWAY ALL THE FORMATTING THAT GOES ON IN HERE
+    #   REMOVE ALL THE BLOATED LOGIC, I BEG OF YOU
     def __init__(self, name, path):
         self.name = name
         self.path = path
         self.attribute_types = {"int": int, "float": float, "char(": str, "varchar(": str}
         self.attributes = {}  # {Column: [Attribute Name(str), Attribute Type(str)]}
+        self.attr_to_col = {}  # {Attribute Name(str) : Column(int)}
         self.files_modified = 0
 
     def create_table(self):
@@ -49,7 +52,6 @@ class Table:
             return False
 
     def add_values(self, values):
-        values = values[0]
         value_name = [name for i, name in enumerate(values) if i % 2 == 0]
         value_type = [v_type for v_type in values if v_type not in value_name]
         for v_type in value_type:
@@ -108,45 +110,44 @@ class Table:
                 values.append(line.strip('\n '))
         return values
 
-    def select_values(self, select_values, conditions, table_join=[], join_attributes={}):
-        if select_values[0] == "*" and not conditions:
-            # Print all headers and associated values
-            table_file = open(self.path, "r")
-            table_rows = table_file.readlines()
-            header = table_rows[0].split()
-            table_entries = table_rows[1:]
-            print('|'.join([attr + ' ' + self.attributes[i][1] for i, attr in enumerate(header)]))
-            for entry in table_entries:
-                print('|'.join(entry.split()))
-            table_file.close()
+    def select_values(self, output_vals, condition, *is_join):
+        with open(self.path, "r") as table:
+            rows = table.readlines()
+            for i, row in enumerate(rows):
+                rows[i] = row.strip('\n ').split()
+        output_cols = [i for i in self.attributes] if output_vals[0] == '*' else \
+            [col for col in self.attributes if self.attributes[col][0] in output_vals]
+        header = [' '.join(self.attributes[i]) for i, val in enumerate(rows[0]) if i in output_cols]
+
+        if not condition:
+            print('|'.join(header))
+            for row in rows[1:]:
+                print('|'.join(row))
+        elif is_join:
+            joined_table, joined_attributes = is_join[0], is_join[1]
+            attributes = [joined_attributes[attr] for attr in joined_attributes]
+            header = []
+            for var in attributes:
+                header.append(' '.join(var))
+
+            left_condition, operation, right_condition = condition
+            left_condition = left_condition.split('.')[1]
+            right_condition = right_condition.split('.')[1]
+            left_col = [col for col in joined_attributes if joined_attributes[col][0] == left_condition][0]
+            right_col = [col for col in joined_attributes if joined_attributes[col][0] == right_condition][0]
+            print(output_vals, left_condition, right_condition)
+            for entry in joined_table:
+                print(entry)
+            print()
+            output_cols = [i for i in range(len(header))]
         else:
-            if join_attributes:
-                self.attributes = join_attributes
-            select_ids, where_args = select_values, conditions
-            where_var, where_op, where_val = where_args
-            where_col = 0
-            where_var = where_var.split('.')[1]
-            where_val = where_val.split('.')[1]
-            print(select_ids, where_var, where_op, where_val)
-            if table_join:
-                rows = table_join
-            else:
-                file = open(self.path, "r")
-                rows = file.readlines()
-                file.close()
-            output_cols = [col for col in self.attributes if self.attributes[col][0] in select_ids]
-            header = rows[0].split()
-            header = [var for i, var in enumerate(header) if i in output_cols]
-            print('|'.join([header[i] + ' ' + self.attributes[attr][1] for i, attr in enumerate(output_cols)]))
-            entries = rows[1:]
-            for col in self.attributes:
-                if self.attributes[col][0] == where_var:
-                    where_col = col
-            for entry in entries:
-                entry_data = entry.split()
-                if self.where_condition(entry_data[where_col], where_op, where_val, where_col):
-                    output = '|'.join([entry_data[i] for i in output_cols])
-                    print(output)
+            print('|'.join(header))
+            left_cond, operation, right_cond = condition
+            left_col = [col for col in self.attributes if self.attributes[col][0] == left_cond][0]
+            for row in rows[1:]:
+                if self.where_condition(row[left_col], operation, right_cond, left_col):
+                    output = [val for i, val in enumerate(row) if i in output_cols]
+                    print('|'.join(output))
 
     def insert_values(self, values):
         file = open(self.path, "a")
@@ -279,24 +280,27 @@ class Database:
             error_msg = "!Failed to delete " + table_name + " because it does not exist."
             print(error_msg)
 
-    def alter_table(self, table_name, *values):
+    def alter_table(self, table_name, values):
         self.tables[table_name].add_values(values)
 
     def join_tables(self, table_1, table_2):
+        table_1 = table_1.lower()
+        table_2 = table_2.lower()
         try:
-            data_1 = self.tables[table_1.lower()].get_values()
-            data_2 = self.tables[table_2.lower()].get_values()
+            data_1 = self.tables[table_1].get_values().copy()
+            data_2 = self.tables[table_2].get_values().copy()
             data_1_header, data_1 = data_1[0], data_1[1:]
             data_2_header, data_2 = data_2[0], data_2[1:]
-            new_table = [data_1_header + data_2_header]
-            new_attributes = self.tables[table_1.lower()].attributes
-            for attributes2 in self.tables[table_2.lower()].attributes:
-                new_attributes[attributes2] = self.tables[table_2.lower()].attributes[attributes2]
-            print(new_attributes)
+            new_table = [data_1_header + ' ' + data_2_header]
             for d1 in data_1:
                 for d2 in data_2:
-                    new_table.append(d1 + d2)
-            return new_table
+                    new_table.append(d1 + ' ' + d2)
+            attr_1 = self.tables[table_1].attributes.copy()
+            attr_2 = self.tables[table_2].attributes.copy()
+            new_attributes = attr_1
+            for col in attr_2:
+                new_attributes[max(new_attributes) + 1] = attr_2[col]
+            return new_table, new_attributes
         except KeyError as _:
             error_msg = "!Failed to join table " + table_1 + " and " + table_2 + " because one of them does not exist."
             print(error_msg)
@@ -310,8 +314,8 @@ class Database:
                     table_2 = table_name[join_index + 1].lower()
                 else:
                     table_2 = table_name[2].lower()
-                table_join = self.join_tables(table_1, table_2)
-                self.tables[table_1].select_values(select_values, conditions, table_join)
+                table_join, attr_join = self.join_tables(table_1, table_2)
+                self.tables[table_1].select_values(select_values, conditions, table_join, attr_join)
             else:
                 self.tables[table_name].select_values(select_values, conditions)
         except KeyError as _:
