@@ -1,6 +1,6 @@
 """
 Author: Javier Perez
-Date: 11/21/22
+Date: 12/15/22
 Description:
     This file defines the classes: Table, Database, Database Manager
     The database manager in this case will be the only object that we explicitly
@@ -35,6 +35,7 @@ class Table:
         self.attributes = {}  # {Column: [Attribute Name(str), Attribute Type(str)]}
         self.attr_to_col = {}  # {Attribute Name(str) : Column(int)}
         self.files_modified = 0
+        self.lock_file = self.name + '_lock.txt'
 
     def create_table(self):
         try:
@@ -99,6 +100,13 @@ class Table:
         file.write('\n')
         file.close()
         return True
+
+    def set_attributes(self, values):
+        values = values[0]
+        value_name = [name for i, name in enumerate(values) if i % 2 == 0]
+        value_type = [v_type for v_type in values if v_type not in value_name]
+        for i, v_name in enumerate(value_name):
+            self.attributes[i] = (v_name, value_type[i])
 
     def get_values(self):
         values = []
@@ -169,6 +177,9 @@ class Table:
         print("1 new record inserted.")
 
     def update_values(self, set_args, where_args):
+        if not self.transaction_begin():
+            return False
+
         file = open(self.path, "r")
         rows = file.readlines()
         file.close()
@@ -181,7 +192,7 @@ class Table:
                 set_col = col
             if self.attributes[col][0] == where_var:
                 where_col = col
-        file = open(self.path, "w")
+        file = open(self.lock_file, "w")
         file.write(header)
         modified_flag = 0
         for entry in entries:
@@ -197,6 +208,19 @@ class Table:
                 print(self.files_modified, "record modified.")
             else:
                 print(self.files_modified, "records modified.")
+        file.close()
+        return True
+
+    def commit_updates(self):
+        file = open(self.lock_file, "r")
+        rows = file.readlines()
+        file.close()
+        header = rows[0]
+        entries = rows[1:]
+        file = open(self.path, "w")
+        file.write(header)
+        for entry in entries:
+            file.write(entry)
         file.close()
 
     def delete_values(self, where_args):
@@ -267,6 +291,18 @@ class Table:
             case "!=":
                 return table_val != where_val
 
+    def transaction_begin(self):
+        if os.path.exists(self.lock_file):
+            print("!Error: Table", self.name, 'is locked!')
+            return False
+        else:
+            lock_file = open(self.lock_file, "a")
+            lock_file.close()
+            return True
+
+    def transaction_end(self):
+        self.commit_updates()
+        os.remove(self.lock_file)
 
 class Database:
     """
@@ -287,6 +323,8 @@ class Database:
         self.db_name = db_name
         self.db_path = "./" + db_name
         self.tables = {}
+        self.is_transaction = False
+        self.commits = []
 
     def create_table(self, table_name, *values):
         table_path = self.db_path + '/' + table_name
@@ -299,6 +337,39 @@ class Database:
             self.tables[table_name] = temp
             if not temp.set_values(values):
                 self.tables.pop(table_name)
+
+    def find_tables(self):
+        dir_tables = os.listdir(self.db_path)
+        for table_path in dir_tables:
+            table_ext = table_path.index('.')
+            table_name = table_path[:table_ext]
+            table_path = self.db_path + '/' + table_path
+            temp = Table(table_name, table_path)
+            self.tables[table_name] = temp
+            vals = self.tables[table_name].get_values()
+            value_names = vals[0].split()
+            entries = vals[1:][0].split()
+            table_values = []
+            for i, entry in enumerate(entries):
+                value_type = self.determine_type(entry, table_name)
+                table_values.append(value_names[i])
+                table_values.append(value_type)
+            self.tables[table_name].set_attributes([table_values])
+
+    def determine_type(self, entry, table_name):
+        valid_types = self.tables[table_name].attribute_types
+        check_order = ['int', 'float', 'char(']
+        entry_type = ''
+        for type_check in check_order:
+            try:
+                valid_types[type_check](entry)
+                entry_type = type_check
+                break
+            except ValueError as _:
+                pass
+        if entry_type == 'char(' and len(entry) > 1:
+            entry_type = 'varchar('
+        return entry_type
 
     def drop_table(self, table_name):
         try:
@@ -357,10 +428,26 @@ class Database:
         self.tables[table_name].insert_values(values)
 
     def update_table(self, table_name, set_values, where_values):
-        self.tables[table_name].update_values(set_values, where_values)
+        transaction_success = self.tables[table_name].update_values(set_values, where_values)
+        if transaction_success:
+            self.commits.append(table_name)
 
     def delete_table_records(self, table_name, where_values):
         self.tables[table_name].delete_values(where_values)
+
+    def set_transaction(self, state):
+        if state:
+            print('Transaction starts.')
+        else:
+            self.set_commit()
+
+    def set_commit(self):
+        if self.commits:
+            for file_name in self.commits:
+                self.tables[file_name].transaction_end()
+            print("Transaction committed.")
+        else:
+            print("Transaction abort.")
 
     def does_table_exist(self, table_name: str) -> bool:
         return table_name in self.tables
@@ -405,7 +492,13 @@ class DatabaseManager:
             error_msg = "!Failed to create database " + db_name + " because it already exists."
             print(error_msg)
 
+    def update_databases(self, dest_db):
+        self.databases[dest_db] = Database(dest_db)
+        self.databases[dest_db].find_tables()
+
     def set_curr_db(self, dest_db: str):
+        if os.path.exists(dest_db) and dest_db not in self.databases:
+            self.update_databases(dest_db)
         try:
             self.curr_db = self.databases[dest_db]
             success = "Using database " + dest_db + "."

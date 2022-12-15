@@ -1,6 +1,6 @@
 """
 Author: Javier Perez
-Date: 11/21/22
+Date: 12/15/22
 Description:
     This file defines the classes: CLI, CommandManager
     The CLI in this case will be the only object that we explicitly call in the
@@ -9,6 +9,8 @@ Description:
     The database manager in this case will be the only object that we explicitly
     call in the main and serves as the users guide and access point into the
 """
+
+import os
 
 
 def is_command(line):
@@ -77,6 +79,13 @@ def format_args(args):
         args[i] = arg.strip(",\'")
 
 
+def remove_comments(command):
+    if "--" in command:
+        comment_start = command.index("--")
+        command = command[:comment_start]
+    return command
+
+
 class CommandManager:
     def __init__(self, dbms):
         self.primary_cmds = ("create", "drop", "use", "select", "alter",
@@ -95,6 +104,7 @@ class CommandManager:
             Assumption: command is just a string containing one complete command
             Complete meaning it starts with a primary cmd and ends with ';'
         """
+        command = remove_comments(command)
         commands = command.strip(';').split()
         primary_cmd, args = commands[0].lower(), commands[1:]
         if primary_cmd.lower() == '.exit':
@@ -119,10 +129,14 @@ class CommandManager:
                 self.update_cmd(args)
             case "delete":
                 self.delete_cmd(args)
+            case "begin":
+                self.begin_cmd()
+            case "commit":
+                self.commit_cmd()
             case ".exit":
                 self.exit_cmd()
             case _:
-                print("!Error: Command not recognized")
+                print("!Error: Command", primary_cmd, "not recognized")
 
     def create_cmd(self, args):
         self.troubleshoot(args)
@@ -195,9 +209,17 @@ class CommandManager:
     def insert_cmd(self, args):
         table_name, values = args[1].lower(), args[2:]
         if len(values) > 1:
-            for i, value in enumerate(values):
-                values[i] = value.replace("values(", '').strip(',\')')
+            # values(x, y, z) or values (x,y,z) or values (x, y, z)
+            if "values(" in values[0]:
+                for i, value in enumerate(values):
+                    values[i] = value.replace("values(", '').strip(',\')')
+            else:
+                values = ''.join(values[1:])
+                values = values.split(',')
+                for i, value in enumerate(values):
+                    values[i] = value.strip('()\'')
         else:
+            # values(x,y,z)
             values = values[0].split(',')
             for i, value in enumerate(values):
                 values[i] = value.replace("values(", '').strip(')\'')
@@ -216,6 +238,12 @@ class CommandManager:
         where_args = args[3:]
         format_args(where_args)
         self.dbms.curr_db.delete_table_records(table_name, where_args)
+
+    def begin_cmd(self):
+        self.dbms.curr_db.set_transaction(True)
+
+    def commit_cmd(self):
+        self.dbms.curr_db.set_transaction(False)
 
     def exit_cmd(self):
         print("All done.")

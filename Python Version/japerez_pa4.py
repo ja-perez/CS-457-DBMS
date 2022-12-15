@@ -1,11 +1,12 @@
 """
 Author: Javier Perez
-Date: 10/31/22
+Date: 12/15/22
 Compilation: This program was written in pycharm using Python 3.10
-and may be run on any machine with this version of python installed using
-the command: python3 japerez_pa2.py
+and was tested on machines with Win 10, 11 and Ubuntu 22.04.1 LTS.
+The program can be run using the command:
+> python3 japerez_pa4.py
     - Optionally, the program may also parse a file containing a list of commands using:
-    python3 japerez_pa2.py textfile_name
+    > python3 japerez_pa4.py textfile_name
 Description:
     - This file defines our database management systems(DMBS) main function which creates
     a CLI object from the commands.py file to perform the functions of the user's
@@ -26,22 +27,17 @@ from commands import CLI
 
 def main():
     program_args = sys.argv
+    test_files = program_args[1:]
     dbms = db_c.DatabaseManager()
     dbms_cli = CLI(dbms)
-    test_files = program_args[1:]
     if test_files:
         # test files passed - Batch Mode
-        dbms_cli.batch_input(test_files)
-        dbms_cli.process_cmds()
-        pass
-    else:
-        while True:
-            dbms_cli.prompt()
-            if dbms_cli.exit_cmd():
-                break
-            else:
-                dbms_cli.process_cmds()
-                pass
+        dbms_cli.batch_mode(test_files)
+        return
+    while True:
+        dbms_cli.prompt()
+        if dbms_cli.is_exit():
+            break
 
 
 if __name__ == "__main__":
